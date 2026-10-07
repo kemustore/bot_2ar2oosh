@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<title>MC Bot Panel - 2ar2oosh</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  * { box-sizing: border-box; font-family: system-ui, "Segoe UI", Tahoma; }
+  body { margin: 0; background: #0f1115; color: #e6e6e6; padding: 20px; }
+  .wrap { max-width: 900px; margin: auto; }
+  h1 { color: #6ee7b7; margin: 0 0 20px; text-align: center; }
+  .card { background: #171a21; padding: 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #242833; }
+  input { width: 100%; padding: 10px; margin: 6px 0; background: #0f1115; border: 1px solid #2b2f3a; color: #fff; border-radius: 8px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button { padding: 10px 18px; border: 0; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 6px 4px 0 0; }
+  .go { background: #10b981; color: #fff; }
+  .stop { background: #ef4444; color: #fff; }
+  .send { background: #3b82f6; color: #fff; }
+  #log { background: #05070a; padding: 14px; border-radius: 8px; height: 340px; overflow-y: auto;
+         font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.6; }
+  .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+  .on { background: #10b981; color: #fff; }
+  .off { background: #6b7280; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎮 Minecraft Bot Panel</h1>
+
+  <div class="card">
+    <div style="margin-bottom:10px;">الحالة: <span id="st" class="status off">غير متصل</span></div>
+    <div class="row">
+      <input id="host" placeholder="عنوان السيرفر" />
+      <input id="port" placeholder="المنفذ (25565)" />
+    </div>
+    <div class="row">
+      <input id="username" placeholder="اسم البوت" />
+      <input id="version" placeholder="الإصدار (اختياري)" />
+    </div>
+    <button class="go" onclick="start()">▶ تشغيل البوت</button>
+    <button class="stop" onclick="stop()">⏹ إيقاف</button>
+  </div>
+
+  <div class="card">
+    <input id="msg" placeholder="اكتب رسالة للشات..." onkeydown="if(event.key==='Enter')send()" />
+    <button class="send" onclick="send()">إرسال</button>
+  </div>
+
+  <div class="card">
+    <div id="log"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const logBox = document.getElementById('log');
+  const st = document.getElementById('st');
+
+  socket.on('log', (m) => {
+    logBox.textContent += m + "\n";
+    logBox.scrollTop = logBox.scrollHeight;
+  });
+
+  socket.on('state', (s) => {
+    if (s.connected) {
+      st.textContent = 'متصل — ' + (s.username || '');
+      st.className = 'status on';
+    } else {
+      st.textContent = 'غير متصل';
+      st.className = 'status off';
+    }
+  });
+
+  async function start() {
+    const body = {
+      host: document.getElementById('host').value,
+      port: document.getElementById('port').value,
+      username: document.getElementById('username').value,
+      version: document.getElementById('version').value
+    };
+    const r = await fetch('/api/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(r => r.json());
+    if (!r.ok) alert(r.msg);
+  }
+
+  async function stop() {
+    await fetch('/api/stop', { method: 'POST' });
+  }
+
+  async function send() {
+    const input = document.getElementById('msg');
+    if (!input.value) return;
+    await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: input.value })
+    });
+    input.value = '';
+  }
+</script>
+</body>
+</html>
